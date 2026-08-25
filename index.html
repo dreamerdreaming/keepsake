@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Keepsake — a little something for someone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,560;1,9..144,500&family=Caveat:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --ink:#26232b;
+    --parchment:#faf2e2;
+    --parchment-2:#f2e6cd;
+    --rose:#c1666b;
+    --rose-dark:#9c4a4f;
+    --gold:#c9982f;
+    --sage:#7c9473;
+    --line: rgba(38,35,43,0.14);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+      radial-gradient(ellipse at 20% -10%, rgba(193,102,107,0.16), transparent 55%),
+      radial-gradient(ellipse at 90% 110%, rgba(124,148,115,0.14), transparent 55%),
+      var(--ink);
+    font-family:'Inter', sans-serif;
+    color:var(--ink);
+    padding:24px;
+    overflow-x:hidden;
+  }
+  .stage{
+    width:100%;
+    max-width:440px;
+    position:relative;
+  }
+  .card{
+    background:var(--parchment);
+    border-radius:22px;
+    padding:36px 28px 32px;
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.03);
+    position:relative;
+    overflow:hidden;
+  }
+  .card::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image: radial-gradient(rgba(38,35,43,0.035) 1px, transparent 1px);
+    background-size: 3px 3px;
+    pointer-events:none;
+    opacity:.5;
+  }
+  .eyebrow{
+    font-family:'Caveat', cursive;
+    font-size:22px;
+    color:var(--rose-dark);
+    margin:0 0 2px 2px;
+    letter-spacing:.3px;
+  }
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:560;
+    font-size:34px;
+    line-height:1.05;
+    margin:0 0 10px;
+    letter-spacing:-.5px;
+  }
+  p.sub{
+    margin:0 0 26px;
+    color:#4b4750;
+    font-size:14.5px;
+    line-height:1.55;
+  }
+  .btn{
+    width:100%;
+    border:none;
+    border-radius:13px;
+    padding:15px 18px;
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:15px;
+    cursor:pointer;
+    transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .btn:active{ transform: scale(0.98); }
+  .btn-primary{
+    background: linear-gradient(135deg, var(--rose), var(--rose-dark));
+    color:#fff8f2;
+    box-shadow: 0 10px 22px -8px rgba(193,102,107,0.55);
+  }
+  .btn-primary:hover{ box-shadow: 0 14px 26px -8px rgba(193,102,107,0.65); }
+  .btn-ghost{
+    background: transparent;
+    color: var(--ink);
+    border:1.5px solid var(--line);
+  }
+  .btn-ghost:hover{ background: rgba(38,35,43,0.04); }
+  .stack{ display:flex; flex-direction:column; gap:12px; }
+  .divider{
+    display:flex; align-items:center; gap:12px;
+    margin:22px 0;
+    color:#9a938d; font-size:12.5px; letter-spacing:.05em; text-transform:uppercase;
+  }
+  .divider::before,.divider::after{ content:""; flex:1; height:1px; background:var(--line); }
+
+  label{
+    display:block; font-size:12.5px; font-weight:600; color:#65605f;
+    margin:0 0 6px 2px; letter-spacing:.02em; text-transform:uppercase;
+  }
+  input[type=text], textarea, input[type=url], input[type=datetime-local]{
+    width:100%;
+    font-family:'Inter',sans-serif;
+    font-size:15px;
+    padding:12px 13px;
+    border-radius:11px;
+    border:1.5px solid var(--line);
+    background:#fffdf9;
+    color:var(--ink);
+    outline:none;
+    resize:none;
+    transition:border-color .15s;
+  }
+  input:focus, textarea:focus{ border-color: var(--rose); }
+  textarea{ min-height:110px; line-height:1.5; font-family:'Fraunces',serif; font-size:16px;}
+  .field{ margin-bottom:16px; }
+  .row2{ display:flex; gap:12px; }
+  .row2 .field{ flex:1; }
+
+  .mood-row{ display:flex; gap:10px; margin-bottom:18px; }
+  .mood{
+    flex:1; padding:10px 6px; border-radius:11px; border:1.5px solid var(--line);
+    cursor:pointer; text-align:center; font-size:12.5px; font-weight:600; color:#65605f;
+    transition: all .15s;
+  }
+  .mood[data-active="true"]{ border-color: var(--mood-c); background: color-mix(in srgb, var(--mood-c) 14%, white); color: var(--ink); }
+  .mood .dot{ width:14px; height:14px; border-radius:50%; background:var(--mood-c); margin:0 auto 6px; }
+
+  .reveal-toggle{ display:flex; gap:10px; margin-bottom:18px; }
+  .rt-opt{
+    flex:1; padding:12px 10px; border-radius:12px; border:1.5px solid var(--line);
+    cursor:pointer; font-size:13px; font-weight:600; text-align:center; color:#65605f;
+  }
+  .rt-opt[data-active="true"]{ border-color: var(--rose); background: rgba(193,102,107,0.08); color: var(--rose-dark); }
+  .rt-opt small{ display:block; font-weight:400; font-size:11px; margin-top:3px; color:#8a847f; }
+
+  .link-display{
+    text-align:center;
+    font-family:'Inter',monospace;
+    font-size:13px;
+    word-break:break-all;
+    line-height:1.5;
+    color:var(--rose-dark);
+    background: var(--parchment-2);
+    border-radius:14px;
+    padding:16px 14px;
+    margin: 4px 0 18px;
+    border: 1.5px dashed var(--rose);
+  }
+  .copied-msg{ text-align:center; font-size:12.5px; color:var(--sage); height:16px; margin-bottom:6px; font-weight:600; }
+
+  .back-link{
+    display:inline-flex; align-items:center; gap:5px;
+    color:#8a847f; font-size:13px; cursor:pointer; margin-bottom:18px; font-weight:500;
+    background:none; border:none; padding:0; font-family:'Inter',sans-serif;
+  }
+  .back-link:hover{ color: var(--ink); }
+
+  /* ---------- Reveal scene ---------- */
+  .scene{ min-height:420px; display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; }
+  .env-wrap{ perspective:1200px; cursor:pointer; user-select:none; }
+  .envelope{
+    width:220px; height:150px; position:relative;
+  }
+  .env-body{
+    position:absolute; inset:0;
+    background: linear-gradient(160deg, #fffaf1, #f1e3c7);
+    border-radius:8px;
+    box-shadow: 0 18px 34px -12px rgba(0,0,0,0.35);
+    border:1px solid rgba(0,0,0,0.06);
+  }
+  .env-flap{
+    position:absolute; top:0; left:0; width:100%; height:100%;
+    clip-path: polygon(0 0, 100% 0, 50% 62%);
+    background: linear-gradient(200deg, #fdf6e6, #ecdcb8);
+    border-radius:8px 8px 0 0;
+    transform-origin: top center;
+    transition: transform .7s cubic-bezier(.6,.05,.25,1);
+    z-index:3;
+  }
+  .env-wrap[data-open="true"] .env-flap{ transform: rotateX(178deg); }
+  .seal{
+    position:absolute; top:56%; left:50%; transform:translate(-50%,-50%);
+    width:58px; height:58px; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--mood-c) 70%, white), var(--mood-c) 60%, color-mix(in srgb, var(--mood-c) 80%, black) 100%);
+    box-shadow: 0 6px 14px -4px rgba(0,0,0,0.45), inset 0 -3px 6px rgba(0,0,0,0.25), inset 0 3px 4px rgba(255,255,255,0.35);
+    z-index:4;
+    display:flex; align-items:center; justify-content:center;
+    transition: transform .5s ease, opacity .5s ease;
+    font-family:'Fraunces',serif; color:rgba(255,255,255,0.92); font-size:22px;
+  }
+  .seal::after{
+    content:"";
+    position:absolute; inset:-6px; border-radius:50%;
+    border:1px dashed rgba(255,255,255,0.25);
+  }
+  .env-wrap[data-open="true"] .seal{
+    animation: crack .5s ease forwards;
+  }
+  @keyframes crack{
+    0%{ transform:translate(-50%,-50%) scale(1); opacity:1; }
+    40%{ transform:translate(-50%,-50%) scale(1.15) rotate(-6deg); }
+    100%{ transform:translate(-50%,-58%) scale(0.5) rotate(25deg); opacity:0; }
+  }
+  .env-hint{
+    text-align:center; color:#a89f8f; font-size:12.5px; margin-top:16px; letter-spacing:.02em;
+  }
+  .tofrom{
+    font-family:'Caveat', cursive; font-size:19px; color:#8a7a55; margin-top:14px; text-align:center; line-height:1.3;
+  }
+
+  .letter{
+    width:100%; max-width:340px;
+    background:#fffdf8;
+    border-radius:14px;
+    padding:26px 22px 22px;
+    box-shadow: 0 22px 44px -18px rgba(0,0,0,0.4);
+    position:relative;
+    opacity:0; transform: translateY(16px) scale(.97);
+    pointer-events:none;
+    transition: opacity .55s ease, transform .55s ease;
+  }
+  .letter[data-show="true"]{ opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
+  .letter .cap{ font-family:'Caveat',cursive; font-size:19px; color: var(--mood-c); margin-bottom:6px; }
+  .letter .msg{
+    font-family:'Fraunces',serif; font-size:18.5px; line-height:1.6; color:#2c2830;
+    white-space:pre-wrap;
+  }
+  .scratch-wrap{ position:relative; border-radius:10px; overflow:hidden; min-height:120px; }
+  .scratch-msg{
+    font-family:'Fraunces',serif; font-size:18.5px; line-height:1.6; color:#2c2830;
+    white-space:pre-wrap; padding:4px 2px;
+  }
+  canvas.scratch-canvas{
+    position:absolute; inset:0; touch-action:none; border-radius:10px; cursor:grab;
+  }
+  .scratch-label{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:6px; color:#6b5a2f; font-size:12.5px; font-weight:600;
+    letter-spacing:.04em; text-transform:uppercase; pointer-events:none;
+  }
+
+  .spotify-wrap{
+    margin-top:16px; opacity:0; transform:translateY(10px);
+    transition: opacity .6s ease .2s, transform .6s ease .2s;
+  }
+  .spotify-wrap[data-show="true"]{ opacity:1; transform:translateY(0); }
+  .spotify-wrap iframe{ border-radius:12px; width:100%; }
+  .listen-btn{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    background: linear-gradient(135deg, var(--mood-c), color-mix(in srgb, var(--mood-c) 70%, black));
+    color:#fff; text-decoration:none; font-weight:600; font-size:14px;
+    border-radius:12px; padding:14px; box-shadow: 0 10px 20px -8px rgba(0,0,0,0.35);
+  }
+
+  .petal{
+    position:fixed; top:-20px; font-size:18px; pointer-events:none; z-index:50;
+    animation: fall linear forwards;
+  }
+  @keyframes fall{
+    to{ transform: translateY(110vh) translateX(var(--dx)) rotate(var(--rot)); opacity:0; }
+  }
+
+  .footer-note{ text-align:center; margin-top:20px; font-size:11.5px; color:#6b665f; opacity:.65; }
+  .dedication{
+    text-align:center; margin-top:10px; font-family:'Caveat',cursive;
+    font-size:17px; color:var(--rose-dark); opacity:.85;
+  }
+
+  .photo-input-row{
+    display:flex; align-items:center; gap:12px; margin-bottom:10px;
+  }
+  .photo-btn{
+    border:1.5px dashed var(--line); border-radius:11px; padding:10px 14px;
+    font-size:13px; font-weight:600; color:#65605f; cursor:pointer; background:#fffdf9;
+    flex:1; text-align:center;
+  }
+  .photo-thumbs{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .photo-thumb{ position:relative; width:56px; height:56px; }
+  .photo-thumb img{
+    width:100%; height:100%; object-fit:cover; border-radius:8px;
+    box-shadow:0 4px 10px rgba(0,0,0,0.15);
+  }
+  .photo-thumb .x{
+    position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%;
+    background:var(--rose-dark); color:#fff; font-size:11px; display:flex; align-items:center;
+    justify-content:center; cursor:pointer; border:2px solid var(--parchment); font-weight:700;
+  }
+
+  .polaroid-gallery{
+    display:flex; gap:14px; overflow-x:auto; padding:6px 4px 14px;
+    scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;
+  }
+  .polaroid{
+    background:#fff; padding:10px 10px 22px; border-radius:4px;
+    box-shadow:0 10px 24px -10px rgba(0,0,0,0.35);
+    flex:0 0 auto; width:170px; scroll-snap-align:center;
+  }
+  .polaroid:nth-child(odd){ transform: rotate(-2deg); }
+  .polaroid:nth-child(even){ transform: rotate(2deg); }
+  .polaroid img{ width:100%; height:170px; object-fit:cover; display:block; border-radius:2px; }
+
+  .reply-btn{
+    display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
+    margin-top:10px; background:transparent; border:1.5px solid var(--line); color:var(--ink);
+    font-weight:600; font-size:14px; border-radius:12px; padding:12px; cursor:pointer;
+    opacity:0; transform:translateY(8px); transition:opacity .5s ease, transform .5s ease;
+    pointer-events:none; font-family:'Inter',sans-serif;
+  }
+  .reply-btn[data-show="true"]{ opacity:1; transform:translateY(0); pointer-events:auto; }
+  .reply-btn:hover{ background: rgba(38,35,43,0.04); }
+
+  .lock-scene{ text-align:center; }
+  .lock-emoji{ font-size:44px; margin-bottom:6px; }
+  .lock-title{ font-family:'Fraunces',serif; font-size:20px; margin-bottom:6px; }
+  .lock-count{
+    font-family:'Fraunces',serif; font-size:32px; color:var(--rose-dark);
+    letter-spacing:1px; margin:10px 0 4px;
+  }
+  .lock-sub{ font-size:12.5px; color:#8a847f; }
+
+  .qr-box{
+    display:flex; justify-content:center; margin:6px 0 14px;
+    padding:14px; background:#fff; border-radius:14px; width:fit-content; margin-left:auto; margin-right:auto;
+  }
+
+  .typewriter-msg{
+    font-family:'Fraunces',serif; font-size:18.5px; line-height:1.6; color:#2c2830;
+    white-space:pre-wrap;
+  }
+  .typewriter-msg .cursor{
+    display:inline-block; width:2px; background:var(--mood-c); margin-left:1px;
+    animation: blink 0.9s step-end infinite;
+  }
+  @keyframes blink{ 50%{ opacity:0; } }
+  .err{
+    color:#8a1f1f; font-size:13px; margin:0 0 12px 2px; min-height:0;
+    background:#fdeaea; border:1px solid #f0c4c4; border-radius:9px; padding:0;
+    transition: padding .15s ease;
+  }
+  .err:not(:empty){ padding:10px 12px; }
+  .icon{ width:16px; height:16px; }
+  .screen{ display:none; }
+  .screen[data-active="true"]{ display:block; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="card">
+
+    <!-- HOME -->
+    <div class="screen" data-active="true" id="screen-home">
+      <p class="eyebrow">a little something for someone</p>
+      <h1>Keepsake</h1>
+      <p class="sub">Wrap a message, a song, or a secret note into something they'll actually want to open. Seal it, send the code, and watch them light up.</p>
+      <div class="stack">
+        <button class="btn btn-primary" id="btnGoCreate">
+          ✉️ Create a Keepsake
+        </button>
+        <button class="btn btn-ghost" id="btnGoOpen">
+          🔓 Open one I received
+        </button>
+      </div>
+      <p class="footer-note">No accounts, no server — the whole message lives inside the link itself.</p>
+      <p class="dedication">This web app is dedicated to my dear friend, Jess.</p>
+    </div>
+
+    <!-- CREATE -->
+    <div class="screen" id="screen-create">
+      <button class="back-link" data-goto="screen-home">← back</button>
+      <p class="eyebrow">for someone who matters</p>
+      <h1 style="font-size:26px;">Write your keepsake</h1>
+
+      <div class="row2">
+        <div class="field">
+          <label>From</label>
+          <input type="text" id="fromName" placeholder="Your name" maxlength="30"/>
+        </div>
+        <div class="field">
+          <label>To</label>
+          <input type="text" id="toName" placeholder="Their name" maxlength="30"/>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Your message</label>
+        <textarea id="messageText" placeholder="Say the thing you've been meaning to say..." maxlength="600"></textarea>
+      </div>
+
+      <div class="field">
+        <label>Music link (optional)</label>
+        <input type="url" id="musicLink" placeholder="Spotify, YouTube Music, Amazon Music — paste any link"/>
+      </div>
+
+      <div class="field">
+        <label>Add photos (optional, up to 4)</label>
+        <div class="photo-input-row">
+          <label class="photo-btn" id="photoBtnLabel" for="photoInput">📷 Choose photos</label>
+        </div>
+        <div class="photo-thumbs" id="photoThumbs"></div>
+        <input type="file" id="photoInput" accept="image/*" multiple style="display:none;"/>
+      </div>
+
+      <div class="field">
+        <label>Unlock at a specific moment? (optional)</label>
+        <input type="datetime-local" id="unlockAt" style="cursor:pointer;"/>
+      </div>
+
+      <label>Mood</label>
+      <div class="mood-row" id="moodRow"></div>
+
+      <label>How should it open?</label>
+      <div class="reveal-toggle" id="revealToggle">
+        <div class="rt-opt" data-mode="seal">
+          Break the seal<small>opens straight away</small>
+        </div>
+        <div class="rt-opt" data-mode="scratch">
+          Scratch to reveal<small>a little suspense</small>
+        </div>
+      </div>
+
+      <div class="err" id="createErr"></div>
+      <button class="btn btn-primary" id="btnSeal">✨ Seal it</button>
+    </div>
+
+    <!-- SHARE -->
+    <div class="screen" id="screen-share">
+      <button class="back-link" data-goto="screen-home">← back</button>
+      <p class="eyebrow">it's sealed</p>
+      <h1 style="font-size:26px;">Share this link</h1>
+      <p class="sub">Send this link to <span id="shareToName">them</span> — opening it takes them straight to the envelope.</p>
+      <div class="link-display" id="linkDisplay">—</div>
+      <div class="qr-box" id="qrBox"></div>
+      <div class="copied-msg" id="copiedMsg"></div>
+      <div class="stack">
+        <button class="btn btn-primary" id="btnCopyCode">📋 Copy link</button>
+        <button class="btn btn-ghost" id="btnPreview">👀 Preview how it looks</button>
+        <button class="btn btn-ghost" data-goto="screen-create">Create another</button>
+      </div>
+      <p class="footer-note">The message is encoded right into the link, not stored on any server — but that also means anyone who gets hold of the link can read it, so send it somewhere private.</p>
+    </div>
+
+    <!-- OPEN -->
+    <div class="screen" id="screen-open">
+      <button class="back-link" data-goto="screen-home">← back</button>
+      <p class="eyebrow">you've got something waiting</p>
+      <h1 style="font-size:26px;">Open your keepsake</h1>
+      <p class="sub">Paste the link you were sent below. (If you just clicked the link, this shouldn't even be necessary — it opens automatically.)</p>
+      <div class="field">
+        <input type="text" id="openCodeInput" placeholder="Paste the link here" style="font-size:14px;"/>
+      </div>
+      <div class="err" id="openErr"></div>
+      <button class="btn btn-primary" id="btnOpen">Open it</button>
+    </div>
+
+    <!-- REVEAL -->
+    <div class="screen" id="screen-reveal">
+      <button class="back-link" data-goto="screen-home">← back to start</button>
+      <div class="scene" id="scene">
+        <!-- built dynamically -->
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const MOODS = [
+  { key:'rose', label:'Romantic', color:'#c1666b' },
+  { key:'gold', label:'Celebrate', color:'#c9982f' },
+  { key:'sage', label:'Calm', color:'#7c9473' },
+];
+let state = { mood:'rose', revealMode:'seal' };
+
+function renderMoods(){
+  const row = document.getElementById('moodRow');
+  row.innerHTML = '';
+  MOODS.forEach(m=>{
+    const el = document.createElement('div');
+    el.className='mood';
+    el.style.setProperty('--mood-c', m.color);
+    el.dataset.active = (state.mood===m.key);
+    el.innerHTML = `<div class="dot"></div>${m.label}`;
+    el.addEventListener('click', ()=>{ state.mood=m.key; renderMoods(); });
+    row.appendChild(el);
+  });
+}
+renderMoods();
+
+function setRevealMode(mode){
+  state.revealMode = mode;
+  document.querySelectorAll('#revealToggle .rt-opt').forEach(el=>{
+    el.dataset.active = (el.dataset.mode===mode);
+  });
+}
+setRevealMode('seal');
+document.querySelectorAll('#revealToggle .rt-opt').forEach(el=>{
+  el.addEventListener('click', ()=> setRevealMode(el.dataset.mode));
+});
+
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.dataset.active = (s.id===id));
+}
+
+// wire up every simple "go to screen" button
+document.querySelectorAll('[data-goto]').forEach(el=>{
+  el.addEventListener('click', ()=> go(el.dataset.goto));
+});
+document.getElementById('btnGoCreate').addEventListener('click', ()=> go('screen-create'));
+document.getElementById('btnGoOpen').addEventListener('click', ()=> go('screen-open'));
+document.getElementById('btnSeal').addEventListener('click', createKeepsake);
+document.getElementById('btnCopyCode').addEventListener('click', copyCode);
+document.getElementById('btnPreview').addEventListener('click', previewMine);
+document.getElementById('btnOpen').addEventListener('click', openKeepsake);
+
+// Unlock date field uses the browser's native datetime-local picker directly — no JS needed
+
+// Photo upload: compress client-side so the resulting link stays a reasonable size
+let photoDataUrls = [];
+const MAX_PHOTOS = 4;
+const photoInput = document.getElementById('photoInput');
+const photoThumbs = document.getElementById('photoThumbs');
+
+function renderPhotoThumbs(){
+  photoThumbs.innerHTML = '';
+  photoDataUrls.forEach((url, idx)=>{
+    const wrap = document.createElement('div');
+    wrap.className = 'photo-thumb';
+    wrap.innerHTML = `<img src="${url}" alt="photo ${idx+1}"/><div class="x">✕</div>`;
+    wrap.querySelector('.x').addEventListener('click', ()=>{
+      photoDataUrls.splice(idx,1);
+      renderPhotoThumbs();
+    });
+    photoThumbs.appendChild(wrap);
+  });
+}
+
+function compressImage(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const maxW = 480;
+        const scale = Math.min(1, maxW / img.width);
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.62));
+      };
+      img.onerror = reject;
+      img.src = ev.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+photoInput.addEventListener('change', async (e)=>{
+  const files = Array.from(e.target.files).slice(0, MAX_PHOTOS - photoDataUrls.length);
+  for(const file of files){
+    try{
+      const url = await compressImage(file);
+      photoDataUrls.push(url);
+    }catch(err){ console.warn('photo compress failed', err); }
+  }
+  renderPhotoThumbs();
+  photoInput.value = '';
+});
+
+function moodColor(key){
+  return (MOODS.find(m=>m.key===key)||MOODS[0]).color;
+}
+
+function parseMusicLink(link){
+  if(!link) return null;
+  let url;
+  try{ url = new URL(link.trim()); }catch(e){ return null; }
+  if(!/^https?:$/.test(url.protocol)) return null;
+  const host = url.hostname.replace(/^www\./,'');
+
+  if(host.includes('spotify.com')){
+    let path = url.pathname.replace(/^\/intl-[a-z]+\//,'/');
+    if(!path.startsWith('/embed/')) path = '/embed'+path;
+    return { type:'spotify', label:'Listen on Spotify', embed:'https://open.spotify.com'+path, link:url.href };
+  }
+  if(host.includes('youtube.com') || host==='youtu.be' || host.includes('music.youtube.com')){
+    let videoId = host==='youtu.be' ? url.pathname.slice(1) : url.searchParams.get('v');
+    const listId = url.searchParams.get('list');
+    if(videoId){
+      return { type:'youtube', label:'Listen on YouTube Music', embed:'https://www.youtube.com/embed/'+videoId+(listId?('?list='+listId):''), link:url.href };
+    }
+    if(listId){
+      return { type:'youtube', label:'Listen on YouTube Music', embed:'https://www.youtube.com/embed/videoseries?list='+listId, link:url.href };
+    }
+    return { type:'youtube', label:'Listen on YouTube Music', embed:null, link:url.href };
+  }
+  if(host.includes('music.amazon')){
+    return { type:'amazon', label:'Listen on Amazon Music', embed:null, link:url.href };
+  }
+  return { type:'other', label:'Listen to this song', embed:null, link:url.href };
+}
+
+function encodeData(obj){
+  const json = JSON.stringify(obj);
+  const bytes = new TextEncoder().encode(json);
+  let binary = '';
+  bytes.forEach(b => binary += String.fromCharCode(b));
+  return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function decodeData(str){
+  let b64 = str.replace(/-/g,'+').replace(/_/g,'/');
+  while(b64.length % 4) b64 += '=';
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+function buildShareUrl(data){
+  return location.origin + location.pathname + '#k=' + encodeData(data);
+}
+function extractEncoded(raw){
+  raw = raw.trim();
+  const hashIdx = raw.indexOf('#');
+  if(hashIdx !== -1) raw = raw.slice(hashIdx+1);
+  if(raw.startsWith('k=')) raw = raw.slice(2);
+  return raw;
+}
+
+let pendingLocal = null; // for preview without needing storage round trip
+
+async function createKeepsake(){
+  const from = document.getElementById('fromName').value.trim();
+  const to = document.getElementById('toName').value.trim();
+  const message = document.getElementById('messageText').value.trim();
+  const music = document.getElementById('musicLink').value.trim();
+  const errEl = document.getElementById('createErr');
+  errEl.textContent = '';
+
+  if(!message){
+    errEl.textContent = 'Write a message before sealing it.';
+    return;
+  }
+  if(music && !parseMusicLink(music)){
+    errEl.textContent = "That doesn't look like a valid link — double check it, or leave it blank.";
+    return;
+  }
+
+  const unlockRaw = document.getElementById('unlockAt').value;
+  const unlockAt = unlockRaw ? new Date(unlockRaw).toISOString() : null;
+
+  const data = { from: from||'Someone', to: to||'you', message, music, mood: state.mood, revealMode: state.revealMode, photos: photoDataUrls.slice(), unlockAt };
+  pendingLocal = data;
+
+  let url;
+  try{
+    url = buildShareUrl(data);
+  }catch(e){
+    console.error('Keepsake encode failed:', e);
+    errEl.textContent = "Couldn't build a link from this message — try a smaller photo or a shorter message.";
+    return;
+  }
+
+  document.getElementById('shareToName').textContent = to || 'them';
+  document.getElementById('linkDisplay').textContent = url;
+  document.getElementById('copiedMsg').textContent = '';
+
+  const qrBox = document.getElementById('qrBox');
+  qrBox.innerHTML = '';
+  if(window.QRCode){
+    try{ new QRCode(qrBox, { text: url, width: 140, height: 140, colorDark: moodColor(state.mood), colorLight: '#ffffff' }); }
+    catch(e){ console.warn('QR generation failed:', e); }
+  }
+
+  go('screen-share');
+}
+
+function copyCode(){
+  const link = document.getElementById('linkDisplay').textContent;
+  navigator.clipboard.writeText(link).then(()=>{
+    const m = document.getElementById('copiedMsg');
+    m.textContent = 'Copied!';
+    setTimeout(()=>m.textContent='', 1800);
+  });
+}
+
+function previewMine(){
+  if(pendingLocal){
+    buildReveal(pendingLocal);
+    go('screen-reveal');
+  }
+}
+
+function openKeepsake(){
+  const raw = document.getElementById('openCodeInput').value.trim();
+  const errEl = document.getElementById('openErr');
+  errEl.textContent = '';
+  if(!raw){ errEl.textContent = 'Paste a link first.'; return; }
+  try{
+    const data = decodeData(extractEncoded(raw));
+    buildReveal(data);
+    go('screen-reveal');
+  }catch(e){
+    errEl.textContent = "That link doesn't look right — check you copied the whole thing.";
+  }
+}
+
+function buildReveal(data){
+  const scene = document.getElementById('scene');
+  scene.innerHTML = '';
+  if(data.unlockAt && new Date(data.unlockAt).getTime() > Date.now()){
+    renderLockScene(scene, data);
+  } else {
+    renderEnvelopeScene(scene, data);
+  }
+}
+
+function renderLockScene(scene, data){
+  const mc = moodColor(data.mood);
+  scene.innerHTML = `
+    <div class="lock-scene" style="--mood-c:${mc}">
+      <div class="lock-emoji">🔒</div>
+      <div class="lock-title">Not quite yet...</div>
+      <div class="lock-count" id="lockCount">—</div>
+      <div class="lock-sub">this keepsake unlocks soon — leave this page open, or come back then</div>
+    </div>
+  `;
+  const target = new Date(data.unlockAt).getTime();
+  const timer = setInterval(tick, 1000);
+  function tick(){
+    const diff = target - Date.now();
+    if(diff <= 0){
+      clearInterval(timer);
+      renderEnvelopeScene(scene, data);
+      return;
+    }
+    const d = Math.floor(diff/86400000);
+    const h = Math.floor((diff%86400000)/3600000);
+    const m = Math.floor((diff%3600000)/60000);
+    const s = Math.floor((diff%60000)/1000);
+    const el = document.getElementById('lockCount');
+    if(el) el.textContent = (d>0? d+'d ' : '') + String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  }
+  tick();
+}
+
+function renderEnvelopeScene(scene, data){
+  const mc = moodColor(data.mood);
+  const music = parseMusicLink(data.music);
+  const photos = data.photos || (data.photo ? [data.photo] : []); // supports older links too
+
+  scene.innerHTML = `
+    <div class="env-wrap" id="envWrap" style="--mood-c:${mc}">
+      <div class="envelope">
+        <div class="env-body"></div>
+        <div class="seal">❤</div>
+        <div class="env-flap"></div>
+      </div>
+    </div>
+    <div class="tofrom">To ${esc(data.to)}, from ${esc(data.from)}</div>
+    <div class="env-hint" id="envHint">tap the seal to open</div>
+
+    <div class="letter" id="letter" style="--mood-c:${mc}">
+      <div class="cap">a little note for you</div>
+      ${photos.length ? `<div class="polaroid-gallery">${photos.map((p,i)=>`<div class="polaroid"><img src="${p}" alt="keepsake photo ${i+1}"/></div>`).join('')}</div>` : ''}
+      ${data.revealMode==='scratch' ? `
+        <div class="scratch-wrap" id="scratchWrap">
+          <div class="scratch-msg">${esc(data.message)}</div>
+          <canvas class="scratch-canvas" id="scratchCanvas"></canvas>
+          <div class="scratch-label" id="scratchLabel">✦ scratch to reveal ✦</div>
+        </div>
+      ` : `
+        <div class="typewriter-msg" id="msgTarget"></div>
+      `}
+      <div class="spotify-wrap" id="spotifyWrap">
+        ${music && music.embed ? `<iframe src="${music.embed}" height="152" frameborder="0" allow="autoplay; encrypted-media; clipboard-write" loading="lazy"></iframe>` : ''}
+        ${music && !music.embed ? `<a class="listen-btn" href="${music.link}" target="_blank" rel="noopener">🎵 ${music.label}</a>` : ''}
+      </div>
+      <button class="reply-btn" id="replyBtn">💌 Send one back</button>
+    </div>
+  `;
+
+  scene.dataset.spotifyPresent = !!music;
+  scene._revealMode = data.revealMode;
+  scene._message = data.message;
+  scene._sourceData = data;
+
+  document.getElementById('envWrap').addEventListener('click', openEnvelope);
+  document.getElementById('replyBtn').addEventListener('click', ()=> startReply(data));
+}
+
+function startReply(data){
+  go('screen-create');
+  document.getElementById('fromName').value = data.to || '';
+  document.getElementById('toName').value = data.from || '';
+  document.getElementById('messageText').value = '';
+  document.getElementById('musicLink').value = '';
+  document.getElementById('unlockAt').value = '';
+  document.getElementById('createErr').textContent = '';
+  photoDataUrls = [];
+  renderPhotoThumbs();
+  state.mood = data.mood || state.mood;
+  renderMoods();
+}
+
+function esc(s){
+  return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Gentle synthesized chime — no audio files needed
+function playChime(kind){
+  try{
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if(!Ctx) return;
+    const ctx = new Ctx();
+    const now = ctx.currentTime;
+    const notes = kind==='open' ? [523.25, 659.25, 783.99] : [659.25, 783.99, 987.77, 1174.66];
+    notes.forEach((freq, i)=>{
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const t = now + i*0.11;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.13, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.65);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.7);
+    });
+    setTimeout(()=>ctx.close(), 1200);
+  }catch(e){ /* audio isn't essential — fail silently */ }
+}
+
+function typewriterReveal(el, text, onDone){
+  el.innerHTML = '';
+  const cursor = document.createElement('span');
+  cursor.className = 'cursor';
+  let i = 0;
+  const speed = Math.max(12, Math.min(35, 900/Math.max(text.length,1)));
+  (function step(){
+    if(i < text.length){
+      el.textContent = text.slice(0, i+1);
+      el.appendChild(cursor);
+      i++;
+      setTimeout(step, speed);
+    } else {
+      cursor.remove();
+      if(onDone) onDone();
+    }
+  })();
+}
+
+function openEnvelope(){
+  const wrap = document.getElementById('envWrap');
+  if(wrap.dataset.open==='true') return;
+  wrap.dataset.open = 'true';
+  document.getElementById('envHint').style.opacity = '0';
+  playChime('open');
+
+  setTimeout(()=>{
+    const letter = document.getElementById('letter');
+    letter.dataset.show = 'true';
+
+    const scene = document.getElementById('scene');
+    const scratchCanvas = document.getElementById('scratchCanvas');
+    if(scratchCanvas){
+      setupScratch(scratchCanvas, ()=> onFullyRevealed());
+    } else {
+      const msgTarget = document.getElementById('msgTarget');
+      if(msgTarget && scene._message){
+        typewriterReveal(msgTarget, scene._message, onFullyRevealed);
+      } else {
+        onFullyRevealed();
+      }
+    }
+  }, 550);
+}
+
+function onFullyRevealed(){
+  const scene = document.getElementById('scene');
+  spawnPetals();
+  playChime('reveal');
+  if(scene.dataset.spotifyPresent === 'true'){
+    setTimeout(()=>{
+      const sw = document.getElementById('spotifyWrap');
+      if(sw) sw.dataset.show = 'true';
+    }, 250);
+  }
+  setTimeout(()=>{
+    const rb = document.getElementById('replyBtn');
+    if(rb) rb.dataset.show = 'true';
+  }, 400);
+}
+
+function setupScratch(canvas, onDone){
+  const wrap = document.getElementById('scratchWrap');
+  const label = document.getElementById('scratchLabel');
+  function size(){
+    const r = wrap.getBoundingClientRect();
+    canvas.width = r.width; canvas.height = r.height;
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0,0,r.width,r.height);
+    grad.addColorStop(0,'#e7c565');
+    grad.addColorStop(1,'#c9982f');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,r.width,r.height);
+  }
+  size();
+  const ctx = canvas.getContext('2d');
+  ctx.globalCompositeOperation = 'destination-out';
+  let drawing = false;
+  let done = false;
+
+  function pos(e){
+    const r = canvas.getBoundingClientRect();
+    const p = e.touches ? e.touches[0] : e;
+    return { x: p.clientX-r.left, y: p.clientY-r.top };
+  }
+  function scratch(x,y){
+    ctx.beginPath();
+    ctx.arc(x,y,20,0,Math.PI*2);
+    ctx.fill();
+  }
+  function checkDone(){
+    if(done) return;
+    const data = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+    let cleared = 0;
+    for(let i=3;i<data.length;i+=4*20){ if(data[i]===0) cleared++; }
+    const total = data.length/(4*20);
+    if(cleared/total > 0.55){
+      done = true;
+      canvas.style.transition = 'opacity .5s ease';
+      canvas.style.opacity = '0';
+      label.style.opacity = '0';
+      setTimeout(()=>{ canvas.remove(); onDone(); }, 500);
+    }
+  }
+  function start(e){ drawing = true; const p = pos(e); scratch(p.x,p.y); }
+  function move(e){
+    if(!drawing) return;
+    e.preventDefault();
+    const p = pos(e); scratch(p.x,p.y); checkDone();
+  }
+  function end(){ drawing = false; }
+
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, {passive:true});
+  canvas.addEventListener('touchmove', move, {passive:false});
+  canvas.addEventListener('touchend', end);
+}
+
+function spawnPetals(){
+  const emojis = ['✦','❋','✧','❥'];
+  for(let i=0;i<18;i++){
+    setTimeout(()=>{
+      const p = document.createElement('div');
+      p.className='petal';
+      p.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+      p.style.left = Math.random()*100+'vw';
+      p.style.setProperty('--dx', (Math.random()*80-40)+'px');
+      p.style.setProperty('--rot', (Math.random()*360)+'deg');
+      p.style.color = ['#c1666b','#c9982f','#7c9473'][Math.floor(Math.random()*3)];
+      p.style.animationDuration = (2.5+Math.random()*2)+'s';
+      document.body.appendChild(p);
+      setTimeout(()=>p.remove(), 5000);
+    }, i*90);
+  }
+}
+
+// If this page was opened via a shared link, jump straight to the reveal
+(function checkIncomingLink(){
+  if(location.hash && location.hash.length > 3){
+    try{
+      const data = decodeData(extractEncoded(location.hash));
+      buildReveal(data);
+      go('screen-reveal');
+    }catch(e){
+      console.warn('Could not parse incoming link hash:', e);
+    }
+  }
+})();
+</script>
+</body>
+</html>
