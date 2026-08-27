@@ -447,6 +447,7 @@
       <h1 style="font-size:26px;">Share this link</h1>
       <p class="sub">Send this link to <span id="shareToName">them</span> — opening it takes them straight to the envelope.</p>
       <div class="link-display" id="linkDisplay">—</div>
+      <p class="footer-note" id="linkLenNote" style="margin-top:-10px;"></p>
       <div class="qr-box" id="qrBox"></div>
       <div class="copied-msg" id="copiedMsg"></div>
       <div class="stack">
@@ -620,23 +621,77 @@ function parseMusicLink(link){
   return { type:'other', label:'Listen to this song', embed:null, link:url.href };
 }
 
-function encodeData(obj){
-  const json = JSON.stringify(obj);
-  const bytes = new TextEncoder().encode(json);
-  let binary = '';
-  bytes.forEach(b => binary += String.fromCharCode(b));
-  return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+// Short keys shave extra bytes off every keepsake link, on top of compression
+const KEY_MAP = { from:'a', to:'b', message:'c', music:'d', mood:'e', revealMode:'g', photos:'h', unlockAt:'i' };
+const KEY_MAP_REV = Object.fromEntries(Object.entries(KEY_MAP).map(([k,v])=>[v,k]));
+
+function shrinkKeys(obj){
+  const out = {};
+  for(const k in obj){
+    const v = obj[k];
+    if(v===null || v===undefined || v==='') continue;
+    if(Array.isArray(v) && v.length===0) continue;
+    out[KEY_MAP[k]||k] = v;
+  }
+  return out;
 }
-function decodeData(str){
-  let b64 = str.replace(/-/g,'+').replace(/_/g,'/');
+function expandKeys(obj){
+  const out = {};
+  for(const k in obj) out[KEY_MAP_REV[k]||k] = obj[k];
+  if(out.photo && !out.photos) out.photos = [out.photo]; // very old links used a single photo field
+  return out;
+}
+
+async function encodeData(obj){
+  const json = JSON.stringify(shrinkKeys(obj));
+  const bytes = new TextEncoder().encode(json);
+  let finalBytes = bytes;
+  let marker = 'p'; // p = plain, z = compressed
+
+  if(window.CompressionStream){
+    try{
+      const cs = new CompressionStream('deflate-raw');
+      const writer = cs.writable.getWriter();
+      writer.write(bytes);
+      writer.close();
+      const compressedBuf = await new Response(cs.readable).arrayBuffer();
+      const compressedBytes = new Uint8Array(compressedBuf);
+      if(compressedBytes.length < bytes.length){
+        finalBytes = compressedBytes;
+        marker = 'z';
+      }
+    }catch(e){ /* fall back to uncompressed */ }
+  }
+
+  let binary = '';
+  finalBytes.forEach(b => binary += String.fromCharCode(b));
+  return marker + btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+async function decodeData(str){
+  const marker = str[0];
+  let b64 = str.slice(1).replace(/-/g,'+').replace(/_/g,'/');
   while(b64.length % 4) b64 += '=';
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);
   for(let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
-  return JSON.parse(new TextDecoder().decode(bytes));
+
+  let finalBytes = bytes;
+  if(marker === 'z'){
+    if(!window.DecompressionStream){
+      throw new Error("This link was compressed and this browser can't decompress it — try a modern browser like Chrome, Edge, or Safari.");
+    }
+    const ds = new DecompressionStream('deflate-raw');
+    const writer = ds.writable.getWriter();
+    writer.write(bytes);
+    writer.close();
+    finalBytes = new Uint8Array(await new Response(ds.readable).arrayBuffer());
+  }
+  return expandKeys(JSON.parse(new TextDecoder().decode(finalBytes)));
 }
-function buildShareUrl(data){
-  return location.origin + location.pathname + '#k=' + encodeData(data);
+
+async function buildShareUrl(data){
+  return location.origin + location.pathname + '#k=' + await encodeData(data);
 }
 function extractEncoded(raw){
   raw = raw.trim();
@@ -671,18 +726,30 @@ async function createKeepsake(){
   const data = { from: from||'Someone', to: to||'you', message, music, mood: state.mood, revealMode: state.revealMode, photos: photoDataUrls.slice(), unlockAt };
   pendingLocal = data;
 
+  const btn = document.getElementById('btnSeal');
+  const original = btn.textContent;
+  btn.textContent = 'Sealing...';
+  btn.disabled = true;
+
   let url;
   try{
-    url = buildShareUrl(data);
+    url = await buildShareUrl(data);
   }catch(e){
     console.error('Keepsake encode failed:', e);
     errEl.textContent = "Couldn't build a link from this message — try a smaller photo or a shorter message.";
+    btn.textContent = original;
+    btn.disabled = false;
     return;
   }
+  btn.textContent = original;
+  btn.disabled = false;
 
   document.getElementById('shareToName').textContent = to || 'them';
   document.getElementById('linkDisplay').textContent = url;
   document.getElementById('copiedMsg').textContent = '';
+  document.getElementById('linkLenNote').textContent = url.length > 1800
+    ? `Heads up: this link is ${url.length.toLocaleString()} characters long, mostly because of the photo(s). Some apps trim very long links — if it doesn't work when pasted, try removing a photo or two.`
+    : `${url.length.toLocaleString()} characters — should paste fine anywhere.`;
 
   const qrBox = document.getElementById('qrBox');
   qrBox.innerHTML = '';
@@ -710,16 +777,17 @@ function previewMine(){
   }
 }
 
-function openKeepsake(){
+async function openKeepsake(){
   const raw = document.getElementById('openCodeInput').value.trim();
   const errEl = document.getElementById('openErr');
   errEl.textContent = '';
   if(!raw){ errEl.textContent = 'Paste a link first.'; return; }
   try{
-    const data = decodeData(extractEncoded(raw));
+    const data = await decodeData(extractEncoded(raw));
     buildReveal(data);
     go('screen-reveal');
   }catch(e){
+    console.error('Keepsake decode failed:', e);
     errEl.textContent = "That link doesn't look right — check you copied the whole thing.";
   }
 }
@@ -990,10 +1058,10 @@ function spawnPetals(){
 }
 
 // If this page was opened via a shared link, jump straight to the reveal
-(function checkIncomingLink(){
+(async function checkIncomingLink(){
   if(location.hash && location.hash.length > 3){
     try{
-      const data = decodeData(extractEncoded(location.hash));
+      const data = await decodeData(extractEncoded(location.hash));
       buildReveal(data);
       go('screen-reveal');
     }catch(e){
