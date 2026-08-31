@@ -4,9 +4,17 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Keepsake — a little something for someone</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#c1666b">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Keepsake">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,560;1,9..144,500&family=Caveat:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   :root{
     --ink:#26232b;
@@ -282,6 +290,12 @@
     text-align:center; margin-top:10px; font-family:'Caveat',cursive;
     font-size:17px; color:var(--rose-dark); opacity:.85;
   }
+  .install-btn{
+    display:none; width:100%; margin-top:16px; background:var(--parchment-2);
+    border:1.5px solid var(--gold); color:#6b5a2f; font-weight:600; font-size:13.5px;
+    border-radius:12px; padding:11px; cursor:pointer; font-family:'Inter',sans-serif;
+  }
+  .install-btn[data-show="true"]{ display:block; }
 
   .photo-input-row{
     display:flex; align-items:center; gap:12px; margin-bottom:10px;
@@ -325,6 +339,15 @@
   }
   .reply-btn[data-show="true"]{ opacity:1; transform:translateY(0); pointer-events:auto; }
   .reply-btn:hover{ background: rgba(38,35,43,0.04); }
+  .save-btn{
+    display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
+    margin-top:16px; background: var(--mood-c); border:none; color:#fff;
+    font-weight:600; font-size:14px; border-radius:12px; padding:12px; cursor:pointer;
+    opacity:0; transform:translateY(8px); transition:opacity .5s ease, transform .5s ease;
+    pointer-events:none; font-family:'Inter',sans-serif;
+    box-shadow: 0 10px 20px -8px rgba(0,0,0,0.35);
+  }
+  .save-btn[data-show="true"]{ opacity:1; transform:translateY(0); pointer-events:auto; }
 
   .lock-scene{ text-align:center; }
   .lock-emoji{ font-size:44px; margin-bottom:6px; }
@@ -379,6 +402,7 @@
         </button>
       </div>
       <p class="footer-note">No accounts, no server — the whole message lives inside the link itself.</p>
+      <button class="install-btn" id="installBtn" data-show="false">📲 Install Keepsake as an app</button>
       <p class="dedication">This web app is dedicated to my dear friend, Jess.</p>
     </div>
 
@@ -587,6 +611,38 @@ photoInput.addEventListener('change', async (e)=>{
   renderPhotoThumbs();
   photoInput.value = '';
 });
+
+// PWA: register the service worker so the app can be installed and reopened offline
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW registration failed:', err));
+  });
+}
+
+// PWA: show a native "install app" prompt when the browser supports it
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = document.getElementById('installBtn');
+  if(btn) btn.dataset.show = 'true';
+});
+document.getElementById('installBtn').addEventListener('click', async ()=>{
+  if(!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  document.getElementById('installBtn').dataset.show = 'false';
+});
+window.addEventListener('appinstalled', ()=>{
+  const btn = document.getElementById('installBtn');
+  if(btn) btn.dataset.show = 'false';
+});
+
+// A little haptic buzz on supported devices — makes key moments feel more physical
+function haptic(pattern){
+  if(navigator.vibrate){ try{ navigator.vibrate(pattern); }catch(e){} }
+}
 
 function moodColor(key){
   return (MOODS.find(m=>m.key===key)||MOODS[0]).color;
@@ -863,6 +919,7 @@ function renderEnvelopeScene(scene, data){
         ${music && music.embed ? `<iframe src="${music.embed}" height="152" frameborder="0" allow="autoplay; encrypted-media; clipboard-write" loading="lazy"></iframe>` : ''}
         ${music && !music.embed ? `<a class="listen-btn" href="${music.link}" target="_blank" rel="noopener">🎵 ${music.label}</a>` : ''}
       </div>
+      <button class="save-btn" id="saveBtn">🖼️ Save as a photo</button>
       <button class="reply-btn" id="replyBtn">💌 Send one back</button>
     </div>
   `;
@@ -874,6 +931,7 @@ function renderEnvelopeScene(scene, data){
 
   document.getElementById('envWrap').addEventListener('click', openEnvelope);
   document.getElementById('replyBtn').addEventListener('click', ()=> startReply(data));
+  document.getElementById('saveBtn').addEventListener('click', saveLetterAsPhoto);
 }
 
 function startReply(data){
@@ -944,6 +1002,7 @@ function openEnvelope(){
   wrap.dataset.open = 'true';
   document.getElementById('envHint').style.opacity = '0';
   playChime('open');
+  haptic([15, 40, 15]);
 
   setTimeout(()=>{
     const letter = document.getElementById('letter');
@@ -966,8 +1025,10 @@ function openEnvelope(){
 
 function onFullyRevealed(){
   const scene = document.getElementById('scene');
-  spawnPetals();
+  const mood = scene._sourceData ? scene._sourceData.mood : 'rose';
+  spawnPetals(mood);
   playChime('reveal');
+  haptic([10, 30, 10, 30, 40]);
   if(scene.dataset.spotifyPresent === 'true'){
     setTimeout(()=>{
       const sw = document.getElementById('spotifyWrap');
@@ -977,7 +1038,31 @@ function onFullyRevealed(){
   setTimeout(()=>{
     const rb = document.getElementById('replyBtn');
     if(rb) rb.dataset.show = 'true';
+    const sb = document.getElementById('saveBtn');
+    if(sb) sb.dataset.show = 'true';
   }, 400);
+}
+
+function saveLetterAsPhoto(){
+  const letter = document.getElementById('letter');
+  const saveBtn = document.getElementById('saveBtn');
+  const replyBtn = document.getElementById('replyBtn');
+  if(!window.html2canvas){ return; }
+  // hide the action buttons themselves from the captured image
+  saveBtn.style.visibility = 'hidden';
+  replyBtn.style.visibility = 'hidden';
+  html2canvas(letter, { backgroundColor:'#fffdf8', scale:2, useCORS:true }).then((canvas)=>{
+    saveBtn.style.visibility = '';
+    replyBtn.style.visibility = '';
+    const link = document.createElement('a');
+    link.download = 'keepsake.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }).catch((e)=>{
+    saveBtn.style.visibility = '';
+    replyBtn.style.visibility = '';
+    console.warn('Could not save image:', e);
+  });
 }
 
 function setupScratch(canvas, onDone){
@@ -1039,21 +1124,28 @@ function setupScratch(canvas, onDone){
   canvas.addEventListener('touchend', end);
 }
 
-function spawnPetals(){
-  const emojis = ['✦','❋','✧','❥'];
-  for(let i=0;i<18;i++){
+function spawnPetals(mood){
+  const THEMES = {
+    rose:  { emojis:['❤','✦','💕','❋'], colors:['#c1666b','#e08a8f','#9c4a4f'] },
+    gold:  { emojis:['🎉','✨','🎊','⭐'], colors:['#c9982f','#e7c565','#a67a1f'] },
+    sage:  { emojis:['🍃','✧','❋','✦'],  colors:['#7c9473','#a3bd97','#5f7458'] },
+  };
+  const theme = THEMES[mood] || THEMES.rose;
+  const count = 26;
+  for(let i=0;i<count;i++){
     setTimeout(()=>{
       const p = document.createElement('div');
       p.className='petal';
-      p.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+      p.textContent = theme.emojis[Math.floor(Math.random()*theme.emojis.length)];
       p.style.left = Math.random()*100+'vw';
-      p.style.setProperty('--dx', (Math.random()*80-40)+'px');
+      p.style.setProperty('--dx', (Math.random()*90-45)+'px');
       p.style.setProperty('--rot', (Math.random()*360)+'deg');
-      p.style.color = ['#c1666b','#c9982f','#7c9473'][Math.floor(Math.random()*3)];
+      p.style.color = theme.colors[Math.floor(Math.random()*theme.colors.length)];
+      p.style.fontSize = (14 + Math.random()*10)+'px';
       p.style.animationDuration = (2.5+Math.random()*2)+'s';
       document.body.appendChild(p);
       setTimeout(()=>p.remove(), 5000);
-    }, i*90);
+    }, i*70);
   }
 }
 
